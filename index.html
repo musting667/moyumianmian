@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>摸鱼百宝箱</title>
+    <style>
+        /* 通用样式 */
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f0f8ff;
+        }
+
+        /* 导航样式 */
+        .nav-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .nav-button {
+            background: #3498db;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s;
+        }
+        .nav-button:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        /* 广告样式 */
+        .ad-container {
+            background: #f8f9fa;
+            border: 2px dashed #3498db;
+            border-radius: 8px;
+            text-align: center;
+            padding: 20px;
+            margin: 20px 0;
+            min-height: 100px;
+            color: #666;
+            transition: all 0.3s;
+        }
+        .ad-container:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.2);
+        }
+
+        /* 仙玉计算器样式 */
+        #jadeCalculator .calculator {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        #jadeCalculator .input-group {
+            margin-bottom: 25px;
+        }
+        #jadeCalculator .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #e8f4f8;
+            border-radius: 8px;
+            display: none;
+        }
+
+        /* 神装计算器样式 */
+        #equipCalculator .calculator {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #equipCalculator .input-group {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #equipCalculator .result table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        /* 通用隐藏类 */
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-container">
+        <button class="nav-button" onclick="showTool('jade')">28关卡仙玉计算</button>
+        <button class="nav-button" onclick="showTool('equip')">神装强化模拟器</button>
+    </div>
+
+    <div id="initialAd" class="ad-container">
+        <h3>广告位招租</h3>
+        <p>联系vx：Ajiujiu81A</p>
+        <p>尺寸：800x100px</p>
+    </div>
+
+    <!-- 仙玉计算器 -->
+    <div id="jadeCalculator" class="hidden">
+        <div class="calculator">
+            <h2>28关卡仙玉计算器</h2>
+            <div class="input-group">
+                <label for="start">起始关卡：</label>
+                <input type="number" id="start" min="1" step="1" placeholder="开始关卡">
+            </div>
+            <div class="input-group">
+                <label for="end">结束关卡：</label>
+                <input type="number" id="end" min="1" step="1" placeholder="结束关卡">
+            </div>
+            <button onclick="calculateJade()">立即计算</button>
+            <div class="result" id="result">
+                <h3>计算结果</h3>
+                <div class="jade-total">
+                    总计仙玉：<span id="total-jade">0</span>
+                </div>
+                <div class="calculation-steps" id="steps"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 神装计算器 -->
+    <div id="equipCalculator" class="hidden">
+        <div class="calculator">
+            <h2>神装强化模拟器</h2>
+            <div class="input-group">
+                <label>当前等级：</label>
+                <input type="number" id="currentLevel" min="0" max="560" value="0">
+            </div>
+            <div class="input-group">
+                <label>目标等级：</label>
+                <input type="number" id="targetLevel" min="0" max="580" value="20">
+            </div>
+            <div class="input-group">
+                <label>装备部位：</label>
+                <select id="part">
+                    <option value="hand">手镯</option>
+                    <option value="ornament">饰物</option>
+                    <option value="belt">腰带</option>
+                    <option value="shoes">鞋子</option>
+                </select>
+            </div>
+            <button onclick="calculateEquip()">计算强化效果</button>
+            <div class="error" id="errorMsg"></div>
+            <div class="result" id="equipResult">
+                <h3>强化效果明细</h3>
+                <table>
+                    <tr><td>装备等级</td><td id="equipLevel">+0</td></tr>
+                    <tr><td>强化石消耗</td><td id="stoneCost">0</td></tr>
+                    <tr><td>累计消耗强化石</td><td id="cumulative">0</td></tr>
+                    <tr><td>法术伤害提升</td><td id="magicDamage">+0</td></tr>
+                    <tr><td>气血值（鞋子是速度）提升</td><td id="health">+0</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 工具切换逻辑
+        function showTool(toolType) {
+            document.getElementById('initialAd').classList.add('hidden');
+            document.getElementById('jadeCalculator').classList.add('hidden');
+            document.getElementById('equipCalculator').classList.add('hidden');
+            document.getElementById(toolType + 'Calculator').classList.remove('hidden');
+        }
+
+        // 仙玉计算逻辑
+        function calculateJade() {
+            const start = parseInt(document.getElementById('start').value) || 0;
+            const end = parseInt(document.getElementById('end').value) || 0;
+            if (start <= 0 || end < start) {
+                alert("请输入有效的起始和结束关卡");
+                return;
+            }
+
+            let total = 0;
+            const steps = [];
+
+             // 计算基础奖励（非第七关）
+            const totalStages = end - start + 1;
+            const seventhStagesCount = Math.floor(end / 7) - Math.floor((start - 1) / 7);
+            const nonSeventhStages = totalStages - seventhStagesCount;
+            const baseReward = nonSeventhStages * 100;
+            total += baseReward;
+            steps.push(`基础奖励：${nonSeventhStages}关 × 100 = ${baseReward}`);
+
+            // 计算第七关特殊奖励
+            const firstSeventh = Math.ceil(start / 7) * 7;
+            const lastSeventh = Math.floor(end / 7) * 7;
+            let cycleBonus = 0;
+            if (firstSeventh <= lastSeventh) {
+                for (let k = firstSeventh / 7; k <= lastSeventh / 7; k++) {
+                    const currentStage = k * 7;
+                    let bonus;
+                    if (currentStage <= 672) {
+                        bonus = k * 100 + 400;
+                    } else {
+                        bonus = 10000;
+                    }
+                    cycleBonus += bonus;
+                    steps.push(`第${currentStage}关特殊奖励：+${bonus}`);
+                }
+            }
+            total += cycleBonus;
+
+
+       // 新增：第6关特殊奖励
+    if (start <= 6 && end >= 6) {
+        total += 100;
+        steps.push("第6关特殊奖励：+100");
+    }
+
+    // 重构后的额外奖励计算逻辑
+    let extraTotal = 0;
+
+    // 生成检测点（包含所有需要计算的关卡）
+    const generateCheckpoints = (start, end) => {
+        const checkpoints = new Set();
+        
+        // 标准10倍数关卡
+        for (let m = Math.ceil(start/10)*10; m <= end; m +=10) {
+            checkpoints.add(m);
+        }
+        
+        // 特殊阶段关键点
+        [4662, 4690, 5740].forEach(m => {
+            if (m >= start && m <= end) checkpoints.add(m);
+        });
+        
+        // 5740后特殊检测点
+        for (let m = 5740; m <= end; m +=30) {
+            if (m > 5740) checkpoints.add(m); // 5740+每30关
+        }
+        for (let m = 5740 + 150; m <= end; m +=150) {
+            checkpoints.add(m); // 5740后每150关
+        }
+        
+        return Array.from(checkpoints).sort((a,b) => a - b);
+    };
+
+    // 阶段基准值定义
+    const stageValues = {
+        250: 340,        // 250关累积值 = 100 + 24 * 10
+        260: 400,        // 250-260: 340 + 1 * 60
+        2400: 21800,     // 260-2400: 400 + 214 * 100
+        3000: 24800,     // 2400-3000: 21800 + 30 * 100
+        4650: 30300,     // 3000-4650: 24800 + 55 * 100
+        4662: 30400,     // 4650后12关
+        4690: 30500,     // 4662后28关
+        5740: 34000      // 4690-5740: 30500 + 35 * 100
+    };
+
+    generateCheckpoints(start, end).forEach(m => {
+        let extra = 0;
+        let desc = `第${m}关额外奖励：`;
+        
+        if (m <= 250) {
+            // 10-250关：每10关+10
+            const term = Math.floor(m/10) - 1;
+            extra = 100 + term * 10;
+            desc += `基础100 + ${term}次10加成`;
+        } 
+        else if (m <= 260) {
+            // 250-260关：每10关+60
+            const cycles = (m - 250)/10;
+            extra = stageValues[250] + cycles * 60;
+            desc += `250基准340 + ${cycles}次60加成`;
+        }
+        else if (m <= 2400) {
+            // 260-2400关：每10关+100
+            const cycles = (m - 260)/10;
+            extra = stageValues[260] + cycles * 100;
+            desc += `260基准400 + ${cycles}次100加成`;
+        }
+        else if (m <= 3000) {
+            // 2400-3000关：每20关+100
+            if (m%20 === 0) {
+                const cycles = (m - 2400)/20;
+                extra = stageValues[2400] + cycles * 100;
+                desc += `2400基准21800 + ${cycles}次100加成`;
+            }
+        }
+        else if (m <= 4650) {
+            // 3000-4650关：每30关+100
+            if (m%30 === 0) {
+                const cycles = (m - 3000)/30;
+                extra = stageValues[3000] + cycles * 100;
+                desc += `3000基准24800 + ${cycles}次100加成`;
+            }
+        }
+        else if (m === 4662) {
+            // 4650-4663特殊处理
+            extra = stageValues[4650] + 100;
+            desc += "4650后12关加成";
+        }
+        else if (m === 4690) {
+            // 4663-4690特殊处理
+            extra = stageValues[4662] + 100;
+            desc += "4662后28关加成";
+        }
+        else if (m <= 5740) {
+            // 4690-5740关：每30关+100
+            if ((m - 4690)%30 === 0) {
+                const cycles = (m - 4690)/30;
+                extra = stageValues[4690] + cycles * 100;
+                desc += `4690基准30500 + ${cycles}次100加成`;
+            }
+        }
+        else if (m > 5740) {
+    // 5740后特殊处理逻辑
+    const post5740 = m - 5740;
+    const cycle150 = Math.floor(post5740 / 150);  // 计算完整150关周期数
+    const base = 34000 + cycle150 * 100;          // 当前周期基准值
+    
+    // 在150周期内检测30倍数关卡
+    if (post5740 % 30 === 0) {
+        // 判断是否到达新周期
+        if (post5740 % 150 === 0) {
+            // 150倍数关卡获得新基准值
+            extra = base;
+            desc = `${34000}（基准） + ${cycle150}×150关加成 = ${base}`;
+        } else {
+            // 普通30倍数关卡维持当前周期基准值
+            extra = base;
+            const currentCycle = cycle150 + 1;
+            const progress = post5740 % 150;
+            desc = `第${currentCycle}个150周期（进度${progress}关）维持${base}`;
+        }
+    }
+}
+
+        if (extra > 0) {
+            extraTotal += extra;
+            steps.push(`${desc} = ${extra}`);
+        }
+    });
+
+    total += extraTotal;
+
+
+            document.getElementById('result').style.display = 'block';
+            document.getElementById('total-jade').textContent = total;
+            document.getElementById('steps').innerHTML = steps.map(s => `<p>${s}</p>`).join('');
+        }
+
+        // 神装计算逻辑
+        const reinforcementData = [ 
+            {   // 0 → 20
+                current: 0,
+                target: 20,
+                stones: 85,
+                cumulative: 85,
+                parts: {
+                    hand:    { level: 0,  magic: 0,  health: 0 },
+                    ornament:{ level: 0,  magic: 0,  health: 0 },
+                    belt:    { level: 0,  magic: 0,  health: 0 },
+                    shoes:   { level: 0,  magic: 0,  health: 0}
+                }
+            },
+            {   // 20 → 40
+                current: 20,
+                target: 40,
+                stones: 145,
+                cumulative: 230,
+                parts: {
+                    hand:    { level: 36, magic: 3316, health: 0 },
+                    ornament:{ level: 26, magic: 3316,  health: 0 },
+                    belt:    { level: 28,  magic: 0,  health: 19648 },
+                    shoes:   { level: 24, magic: 737 ,health: 86 }
+                }
+            },
+            {   // 40 → 60
+                current: 40,
+                target: 60,
+                stones: 195,
+                cumulative: 425,
+                parts: {
+                    hand:    { level: 56, magic: 7470, health: 0 },
+                    ornament:{ level: 46, magic: 7470,  health: 0 },
+                    belt:    { level: 48,  magic: 0,  health: 44268 },
+                    shoes:   { level: 44, magic: 1660, health: 194 }
+                }
+            },
+            {   // 60 → 80
+                current: 60,
+                target: 80,
+                stones: 270,
+                cumulative: 695,
+                parts: {
+                       hand: { level: 76, magic: 13356, health: 0 },
+                       ornament: { level: 66, magic: 13356, health: 0 },
+                       belt: { level: 68, magic: 0, health: 79146 },
+                       shoes: { level: 64, magic: 2968, health: 346 }
+                }
+            },
+            {   // 80 → 100
+                 current: 80,
+                 target: 100,
+                 stones: 370,
+                 cumulative: 1065,
+                 parts: {
+                        hand: { level: 96, magic: 21876, health: 0 },
+                        ornament: { level: 86, magic: 21876, health: 0 },
+                        belt: { level: 88, magic: 0, health: 129634 },
+                        shoes: { level: 84, magic: 4861, health: 567 }
+                }
+            },
+         {   // 正确100 → 120
+        current: 100,
+        target: 120,
+        stones: 495,
+        cumulative: 1560,
+        parts: {
+            hand:    { level: 116, magic: 34059, health: 0 },
+            ornament:{ level: 106, magic: 34059, health: 0 },
+            belt:    { level: 108, magic: 0,      health: 201829 },
+            shoes:   { level: 104, magic: 7569,   health: 883 }
+        }
+    },
+    {   // 正确120 → 140
+        current: 120,
+        target: 140,
+        stones: 645,
+        cumulative: 2205,
+        parts: {
+            hand:    { level: 136, magic: 51037,  health: 0 },
+            ornament:{ level: 126, magic: 51037,  health: 0 },
+            belt:    { level: 128, magic: 0,      health: 302439 },
+            shoes:   { level: 124, magic: 11341,  health: 1323 }
+        }
+    },
+    {   // 正确140 → 160
+        current: 140,
+        target: 160,
+        stones: 820,
+        cumulative: 3025,
+        parts: {
+            hand:    { level: 156, magic: 74044,  health: 0 },
+            ornament:{ level: 146, magic: 74044,  health: 0 },
+            belt:    { level: 148, magic: 0,      health: 438780 },
+            shoes:   { level: 144, magic: 16454,  health: 1920 }
+        }
+    },
+    {   // 正确160 → 180
+        current: 160,
+        target: 180,
+        stones: 1020,
+        cumulative: 4045,
+        parts: {
+            hand:    { level: 176, magic: 104419, health: 0 },
+            ornament:{ level: 166, magic: 104419, health: 0 },
+            belt:    { level: 168, magic: 0,      health: 618780 },
+            shoes:   { level: 164, magic: 23204,  health: 2707 }
+        }
+    },
+    {   // 正确180 → 200
+        current: 180,
+        target: 200,
+        stones: 1245,
+        cumulative: 5290,
+        parts: {
+            hand:    { level: 196, magic: 143602, health: 0 },
+            ornament:{ level: 186, magic: 143602, health: 0 },
+            belt:    { level: 188, magic: 0,      health: 850976 },
+            shoes:   { level: 184, magic: 31912,  health: 3723 }
+        }
+    },
+      {   // 正确200 → 220
+        current: 200,
+        target: 220,
+        stones: 1495,
+        cumulative: 6785,
+        parts: {
+            hand:    { level: 216, magic: 193136, health: 0 },
+            ornament:{ level: 206, magic: 193136, health: 0 },
+            belt:    { level: 208, magic: 0,      health: 1144512 },
+            shoes:   { level: 204, magic: 42919,  health: 5007 }
+        }
+    },
+    {   // 正确220 → 240
+        current: 220,
+        target: 240,
+        stones: 1770,
+        cumulative: 8555,
+        parts: {
+            hand:    { level: 236, magic: 254668, health: 0 },
+            ornament:{ level: 226, magic: 254668, health: 0 },
+            belt:    { level: 228, magic: 0,      health: 1509146 },
+            shoes:   { level: 224, magic: 56593,  health: 6603 }
+        }
+    },
+    {   // 正确240 → 260
+        current: 240,
+        target: 260,
+        stones: 2070,
+        cumulative: 10625,
+        parts: {
+            hand:    { level: 256, magic: 332376, health: 0 },
+            ornament:{ level: 246, magic: 332376, health: 0 },
+            belt:    { level: 248, magic: 0,      health: 1969634 },
+            shoes:   { level: 244, magic: 73861,  health: 8617 }
+        }
+    },
+    {   // 正确260 → 280
+        current: 260,
+        target: 280,
+        stones: 2395,
+        cumulative: 13020,
+        parts: {
+            hand:    { level: 276, magic: 428934, health: 0 },
+            ornament:{ level: 266, magic: 428934, health: 0 },
+            belt:    { level: 268, magic: 0,      health: 2541829 },
+            shoes:   { level: 264, magic: 95319, health: 11121 }
+        }
+    },
+    {   // 正确280 → 300
+        current: 280,
+        target: 300,
+        stones: 2745,
+        cumulative: 15765,
+        parts: {
+            hand:    { level: 296, magic: 547223, health: 0 },
+            ornament:{ level: 286, magic: 547223, health: 0 },
+            belt:    { level: 288, magic: 0,      health: 3242805 },
+            shoes:   { level: 284, magic: 121605, health: 14187 }
+        }
+    },
+    {   // 正确300 → 320
+        current: 300,
+        target: 320,
+        stones: 3120,
+        cumulative: 18885,
+        parts: {
+            hand:    { level: 316, magic: 690322, health: 0 },
+            ornament:{ level: 306, magic: 690322, health: 0 },
+            belt:    { level: 308, magic: 0,       health: 4090854 },
+            shoes:   { level: 304, magic: 153407,  health: 17897 }
+        }
+    },
+           {   // 正确320 → 340
+        current: 320,
+        target: 340,
+        stones: 4720,
+        cumulative: 23605,
+        parts: {
+            hand:    { level: 336, magic: 861551, health: 0 },
+            ornament:{ level: 326, magic: 861551, health: 0 },
+            belt:    { level: 328, magic: 0,       health: 5105488 },
+            shoes:   { level: 324, magic: 191456,  health: 22337 }
+        }
+    },
+    {   // 正确340 → 360
+        current: 340,
+        target: 360,
+        stones: 6370,
+        cumulative: 29975,
+        parts: {
+            hand:    { level: 356, magic: 1128363, health: 0 },
+            ornament:{ level: 346, magic: 1128363, health: 0 },
+            belt:    { level: 348, magic: 0,       health: 6686598 },
+            shoes:   { level: 344, magic: 250747,  health: 29253 }
+        }
+    },
+    {   // 正确360 → 380
+        current: 360,
+        target: 380,
+        stones: 8600,
+        cumulative: 38575,
+        parts: {
+            hand:    { level: 376, magic: 1480366, health: 0 },
+            ornament:{ level: 366, magic: 1480366, health: 0 },
+            belt:    { level: 368, magic: 0,       health: 8772540 },
+            shoes:   { level: 364, magic: 328970,  health: 38379 }
+        }
+    },
+    {   // 正确380 → 400
+        current: 380,
+        target: 400,
+        stones: 11700,
+        cumulative: 50275,
+        parts: {
+            hand:    { level: 396, magic: 1955597, health: 0 },
+            ornament:{ level: 386, magic: 1955597, health: 0 },
+            belt:    { level: 388, magic: 0,       health: 11588726 },
+            shoes:   { level: 384, magic: 434577, health: 50700 }
+        }
+    },
+    {   // 正确400 → 420
+        current: 400,
+        target: 420,
+        stones: 15670,
+        cumulative: 65945,
+        parts: {
+            hand:    { level: 416, magic: 2597159, health: 0 },
+            ornament:{ level: 406, magic: 2597159, health: 0 },
+            belt:    { level: 408, magic: 0,       health: 15390576 },
+            shoes:   { level: 404, magic: 577146, health: 67333 }
+        }
+    },
+    {   // 正确420 → 440
+        current: 420,
+        target: 440,
+        stones: 21150,
+        cumulative: 87095,
+        parts: {
+            hand:    { level: 436, magic: 3463075, health: 0 },
+            ornament:{ level: 426, magic: 3463075, health: 0 },
+            belt:    { level: 428, magic: 0,       health: 20521928 },
+            shoes:   { level: 424, magic: 769572, health: 89783 }
+        }
+    },
+    {   // 正确440 → 460
+        current: 440,
+        target: 460,
+        stones: 28550,
+        cumulative: 115645,
+        parts: {
+            hand:    { level: 456, magic: 4631812, health: 0 },
+            ornament:{ level: 446, magic: 4631812, health: 0 },
+            belt:    { level: 448, magic: 0,        health: 27447778 },
+            shoes:   { level: 444, magic: 1029291, health: 120084 }
+        }
+    },
+           {   // 正确460 → 480
+        current: 460,
+        target: 480,
+        stones: 38540,
+        cumulative: 154185,
+        parts: {
+            hand:    { level: 476, magic: 6209470, health: 0 },
+            ornament:{ level: 466, magic: 6209470, health: 0 },
+            belt:    { level: 468, magic: 0,        health: 36796856 },
+            shoes:   { level: 464, magic: 1379882,  health: 160986 }
+        }
+    },
+    {   // 正确480 → 500
+        current: 480,
+        target: 500,
+        stones: 52030,
+        cumulative: 206215,
+        parts: {
+            hand:    { level: 496, magic: 8339169, health: 0 },
+            ornament:{ level: 486, magic: 8339169, health: 0 },
+            belt:    { level: 488, magic: 0,        health: 49417296 },
+            shoes:   { level: 484, magic: 1853148,  health: 216200 }
+        }
+    },
+    {   // 正确500 → 520
+        current: 500,
+        target: 520,
+        stones: 83200,
+        cumulative: 289415,
+        parts: {
+            hand:    { level: 500, magic: 11214318, health: 0 },
+            ornament:{ level: 500, magic: 11214318, health: 0 },
+            belt:    { level: 500, magic: 0,        health: 66455220 },
+            shoes:   { level: 500, magic: 2492070,  health: 290741 }
+        }
+    },
+    {   // 正确520 → 540
+        current: 520,
+        target: 540,
+        stones: 125200,
+        cumulative: 414615,
+        parts: {
+            hand:    { level: 520, magic: 15298018, health: 14842904 },
+            ornament:{ level: 508, magic: 15298018, health: 14842904 },
+            belt:    { level: 504, magic: 3399559,        health: 80582151 },
+            shoes:   { level: 514, magic: 3777288, health: 440683 }
+        }
+    },
+    {   // 正确540 → 560
+        current: 540,
+        target: 560,
+        stones: 162000,
+        cumulative: 576615,
+        parts: {
+            hand:    { level: 540, magic: 17330488, health: 33043464 },
+            ornament:{ level: 528, magic: 17330488, health: 33043464 },
+            belt:    { level: 524, magic: 6932195,        health: 96280496 },
+            shoes:   { level: 534, magic: 3856415, health: 528820 }
+        }
+    },
+            {   // 560 → 580
+                current: 560,
+                target: 580,
+                stones: 0,
+                cumulative: 0,
+                parts: {
+                    hand:    { level: 560, magic: 26235276, health: 51719772 },
+                    ornament:{ level: 548, magic: 26235276,  health: 51719772 },
+                    belt:    { level: 544,  magic: 10494111,  health: 150698640 },
+                    shoes:   { level: 554, magic: 6228650, health: 774579 }
+                }
+            }
+        ];
+
+        function calculateEquip() {
+            const current = parseInt(document.getElementById('currentLevel').value);
+            const target = parseInt(document.getElementById('targetLevel').value);
+            const part = document.getElementById('part').value;
+
+            if (current >= target) {
+                document.getElementById('errorMsg').textContent = "目标等级必须大于当前等级";
+                return;
+            }
+
+           // 查找起始和结束区间
+            const startData = reinforcementData.find(d => d.current === current);
+            const endData = reinforcementData.find(d => d.target === target);
+            if (!startData || !endData) {
+                errorMsg.textContent = '错误：无效的等级区间';
+                return;
+            }
+
+            // 查找前一个区间（current的前置区间）
+            const prevData = reinforcementData.find(d => d.target === current) || { cumulative: 0, parts: { [part]: { magic: 0, health: 0 } } };
+
+            // 计算消耗和属性
+            const stoneCost = endData.cumulative - prevData.cumulative;
+            const cumulative = endData.cumulative;
+            const partData = endData.parts[part];
+            const prevPartData = prevData.parts[part] || { magic: 0, health: 0 };
+
+            // 更新结果
+            document.getElementById('stoneCost').textContent = stoneCost;
+            document.getElementById('cumulative').textContent = cumulative;
+            document.getElementById('equipLevel').textContent = `${partData.level}`;
+            document.getElementById('magicDamage').textContent = `+${partData.magic - prevPartData.magic}`;
+            document.getElementById('health').textContent = `+${partData.health - prevPartData.health}`;
+        }
+    </script>
+</body>
+</html>
